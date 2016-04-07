@@ -160,6 +160,8 @@ def perform(inc):
     backup.craw_dir(home, backuppath, "tmp.log")
     backup.clean_tmplog()
     print "[INFO]Current Time:",time.strftime('%Y-%m-%d,%H:%M',time.localtime(time.time()))
+    finishinfo="Flags: Current Time is " + time.strftime('%Y-%m-%d,%H:%M',time.localtime(time.time())) + ", Auto backup finished this time."
+    logging.info(finishinfo)
     print "****************************************************************************"
     print "Update local backup dir finished.waiting for next circle to backup."
     print "****************************************************************************"

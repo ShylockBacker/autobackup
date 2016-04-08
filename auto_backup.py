@@ -26,17 +26,18 @@ class Auto_backup(object):
     def __init__(self):
         #super(Result, self).__init__()
         print "[INFO]Current Time:",time.strftime('%Y-%m-%d,%H:%M',time.localtime(time.time()))
-        self.logfolder = "logs_" + time.strftime('%Y_%m_%d_%H_%M_%S',time.localtime(time.time()))
         self.backupfolder = os.getcwd() + sep + backupfolder
-        print os.getcwd()
-        logpath = os.getcwd() + sep + "logs_" + time.strftime('%Y_%m_%d_%H_%M',time.localtime(time.time()))
-        print logpath
-        os.mkdir(self.logfolder)
         if os.path.isdir(backupfolder):
             print "[DEBUG]backup folder has already exists."
         else:
             print "[INFO]make backup folder %s." % (backupfolder)
             os.mkdir(self.backupfolder)
+
+    def daily_init(self):
+        print "[INFO]Current Time:",time.strftime('%Y-%m-%d,%H:%M',time.localtime(time.time()))
+        self.logfolder = "logs_" + time.strftime('%Y_%m_%d_%H_%M_%S',time.localtime(time.time()))
+        print self.logfolder
+        os.mkdir(self.logfolder)
 
     def remote_dir(self, url, dir):
         sub_url = url + dir
@@ -157,6 +158,7 @@ backup = Auto_backup()
 
 def perform(inc):
     s.enter(inc,0,perform,(inc,))
+    backup.daily_init()
     backup.craw_dir(home, backuppath, "tmp.log")
     backup.clean_tmplog()
     print "[INFO]Current Time:",time.strftime('%Y-%m-%d,%H:%M',time.localtime(time.time()))

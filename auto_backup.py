@@ -36,7 +36,7 @@ class Auto_backup(object):
     def daily_init(self):
         print "[INFO]Current Time:",time.strftime('%Y-%m-%d,%H:%M',time.localtime(time.time()))
         self.logfolder = "logs_" + time.strftime('%Y_%m_%d_%H_%M_%S',time.localtime(time.time()))
-        print self.logfolder
+	print self.logfolder
         os.mkdir(self.logfolder)
 
     def remote_dir(self, url, dir):
@@ -49,6 +49,9 @@ class Auto_backup(object):
         print sub_localpath
         if os.path.isdir(sub_localpath):
             print "[DEBUG]%s folder has already exists." % (sub_localpath)
+        elif os.path.isfile(sub_localpath):
+            print "[DEBUG]%s is a file, not a dir." % (sub_localpath)
+            logging.warning('%s is a exists file, but it can not download now.' % (sub_localpath))
         else:
             print "[INFO]make local tree folder %s." % (sub_localpath)
             os.mkdir(sub_localpath)
@@ -57,47 +60,58 @@ class Auto_backup(object):
     def craw_dir(self, url=home, localpath=backuppath, tmplog="tmp.log"):
         tmplogs=self.logfolder + sep + tmplog
         f = open(tmplogs,'w+')
-        m = urllib2.urlopen(url).read()
-        f.write(m)
-        f.close()
-        with open(tmplogs) as buffer:
-            for line in buffer.readlines():
-                dir_flag = re.compile(r'<a href="(.*)">(.*)</a>(.*) -')
-                file_flag = re.compile(r'<a href="(.*)">(.*)</a>(.*)')
-                dirmatch = dir_flag.search(line)
-                filematch = file_flag.search(line)
-                if dirmatch:
-                    if dirmatch.groups()[1].find('.')>=0:
-                        print "[INFO]Found new file %s, but it could not download now." % (dirmatch.groups()[1])
-                        logging.debug("Found new file %s, but it could not download now." % (dirmatch.groups()[1]))
-                        pass
-                    else:
-                        dir_name=dirmatch.groups()[1]
-                        dir_date=dirmatch.groups()[2].split()[0]
-                        dir_time=dirmatch.groups()[2].split()[1]
-                        print "[INFO]Found directory:",dir_name
-                        print dir_date, dir_time
-                        sub_url=self.remote_dir(url, dir_name)
-                        sub_localpath=self.local_tree(localpath, dir_name)
-                        self.craw_dir(sub_url, sub_localpath, tmplog=dir_name[:-1])
-                elif filematch:
-                    if filematch.groups()[1] == "../":
-                        pass
-                    else:
-                        file_name=filematch.groups()[1]
-                        file_date=filematch.groups()[2].split()[0]
-                        file_time=filematch.groups()[2].split()[1]
-                        print '[INFO]Found file:',file_name
-                        print file_date, file_time
-                        file_time = file_date + ' ' + file_time
-                        sub_url=self.remote_dir(url, file_name)
-                        file_path=localpath + file_name
-                        if self.check_localfile(file_path):
-                            self.check_date(sub_url, file_path, file_time)
+        headers = {
+             "User-Agent":"Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.6) Gecko/20091201 Firefox/3.5.6",
+            }
+        try:
+            req = urllib2.Request(url, headers = headers)
+            res = urllib2.urlopen(req)
+            m = res.read()
+        except urllib2.HTTPError as http_error:
+            print "[DEBUG]HTTPError: %s." % (http_error)
+            logging.warning('Open Url failed due to Error:' + str(http_error) + ' and ' + str(http_error.read()))
+            logging.warning('It maybe a new file, but it could not download now.')
+        else:
+            f.write(m)
+            f.close()
+            with open(tmplogs) as buffer:
+                for line in buffer.readlines():
+                    dir_flag = re.compile(r'<a href="(.*)">(.*)</a>(.*) -')
+                    file_flag = re.compile(r'<a href="(.*)">(.*)</a>(.*)')
+                    dirmatch = dir_flag.search(line)
+                    filematch = file_flag.search(line)
+                    if dirmatch:
+                        if dirmatch.groups()[1].find('.')>=0:
+                            print "[INFO]Found new file %s, but it could not download now." % (dirmatch.groups()[1])
+                            logging.debug("Found new file %s, but it could not download now." % (dirmatch.groups()[1]))
+                            pass
                         else:
-                            self.download_file(sub_url, file_path)
-                else:
-                    pass
+                            dir_name=dirmatch.groups()[1]
+                            dir_date=dirmatch.groups()[2].split()[0]
+                            dir_time=dirmatch.groups()[2].split()[1]
+                            print "[INFO]Found directory:",dir_name
+                            print dir_date, dir_time
+                            sub_url=self.remote_dir(url, dir_name)
+                            sub_localpath=self.local_tree(localpath, dir_name)
+                            self.craw_dir(sub_url, sub_localpath, tmplog=dir_name[:-1])
+                    elif filematch:
+                        if filematch.groups()[1] == "../":
+                            pass
+                        else:
+                            file_name=filematch.groups()[1]
+                            file_date=filematch.groups()[2].split()[0]
+                            file_time=filematch.groups()[2].split()[1]
+                            print '[INFO]Found file:',file_name
+                            print file_date, file_time
+                            file_time = file_date + ' ' + file_time
+                            sub_url=self.remote_dir(url, file_name)
+                            file_path=localpath + file_name
+                            if self.check_localfile(file_path):
+                                self.check_date(sub_url, file_path, file_time)
+                            else:
+                                self.download_file(sub_url, file_path)
+                    else:
+                        pass
 
     def check_localfile(self, filepath):
         if os.path.exists(filepath):
